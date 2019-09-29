@@ -35,11 +35,13 @@ class Example(object):
     """Class representing a train/val/test example for text summarization."""
 
     def __init__(self, review, vocab, hps, input=None):
-        """Initializes the Example, performing tokenization and truncation to produce the encoder, decoder and target sequences, which are stored in self.
+        """Initializes the Example, performing tokenization and truncation to produce the encoder,
+        decoder and target sequences, which are stored in self.
 
         Args:
           article: source text; a string. each token is separated by a single space.
-          abstract_sentences: list of strings, one per abstract sentence. In each sentence, each token is separated by a single space.
+          abstract_sentences: list of strings, one per abstract sentence. In each sentence,
+                each token is separated by a single space.
           vocab: Vocabulary object
           hps: hyperparameters
         """
@@ -50,10 +52,7 @@ class Example(object):
         stop_decoding = vocab.word2id(data.STOP_DECODING)
         stop_doc = vocab.word2id(data.STOP_DECODING_DOCUMENT)
 
-        # abstract_words = review.split() # list of strings
-        # abs_ids = [vocab.word2id(w) for w in abstract_words] # list of word ids; OOVs are represented by the id for UNK token
-
-        if input != None:
+        if input is not None:
             review_sentence = sent_tokenize(review)
 
             article = input
@@ -81,7 +80,6 @@ class Example(object):
             if len(abstract_words[-1]) < hps.max_dec_steps:
                 abstract_words[-1].append(stop_doc)
         else:
-
             review_sentence = sent_tokenize(review)
 
             article = review_sentence[0]
@@ -90,7 +88,7 @@ class Example(object):
                 article_words = article_words[:hps.max_enc_steps]
             self.enc_len = len(article_words)  # store the length after truncation but before padding
             self.enc_input = [vocab.word2id(w) for w in
-                              article_words]  # list of word ids; OOVs are represented by the id for UNK token
+                              article_words]  # list of word ids; OOVs are represented by the  id for UNK token
             self.original_review_input = review_sentence[0]
             self.original_review_output = " ".join(review_sentence[1:])
 
@@ -119,8 +117,7 @@ class Example(object):
 
         # Get the decoder input sequence and target sequence
         self.dec_input, self.target = self.get_dec_inp_targ_seqs(abs_ids, hps.max_dec_sen_num, hps.max_dec_steps,
-                                                                 start_decoding,
-                                                                 stop_decoding)  # max_sen_num,max_len, start_doc_id, end_doc_id,start_id, stop_id
+                                                                 start_decoding, stop_decoding)
         self.dec_len = len(self.dec_input)
         self.dec_sen_len = [len(sentence) for sentence in self.target]
         self.original_review = review
@@ -260,6 +257,11 @@ class Batch(object):
         if FLAGS.run_method == 'auto-encoder':
             self.original_review_inputs = [ex.original_review_input for ex in example_list]  # list of lists
 
+    def __repr__(self):
+        props = dir(self)
+        props = [prop for prop in props if not prop.startswith('__')]
+        return json.dumps(props, ensure_ascii=False)
+
 
 class GenBatcher(object):
 
@@ -273,7 +275,8 @@ class GenBatcher(object):
         # self.test_queue = self.fill_example_queue("review_generation_dataset/test/*", mode="test")
         # self.train_queue = self.fill_example_queue("review_generation_dataset/train/*", mode="train")
         # self.test_queue = self.fill_example_queue("review_generation_dataset/test/*", mode="test")
-        self.train_queue = self.fill_example_queue("/home/SENSETIME/zhangxuemiao/dataset/mini_yelp/train/*", mode="train")
+        self.train_queue = self.fill_example_queue("/home/SENSETIME/zhangxuemiao/dataset/mini_yelp/train/*",
+                                                   mode="train")
         self.test_queue = self.fill_example_queue("/home/SENSETIME/zhangxuemiao/dataset/mini_yelp/test/*", mode="test")
 
         print(f'before create_batch')

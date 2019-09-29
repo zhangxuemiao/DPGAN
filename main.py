@@ -72,8 +72,8 @@ tf.app.flags.DEFINE_integer('max_dec_sen_num', 6, 'max timesteps of decoder (max
 tf.app.flags.DEFINE_integer('max_dec_steps', 40, 'max timesteps of decoder (max source text tokens)')  # for generator
 
 # Hyperparameters
-tf.app.flags.DEFINE_integer('hidden_dim', 64, 'dimension of RNN hidden states')  # for discriminator and generator
-tf.app.flags.DEFINE_integer('emb_dim', 32, 'dimension of word embeddings')  # for discriminator and generator
+tf.app.flags.DEFINE_integer('hidden_dim', 16, 'dimension of RNN hidden states')  # for discriminator and generator
+tf.app.flags.DEFINE_integer('emb_dim', 8, 'dimension of word embeddings')  # for discriminator and generator
 tf.app.flags.DEFINE_integer('batch_size', 8, 'minibatch size')  # for discriminator and generator
 tf.app.flags.DEFINE_integer('max_enc_steps', 50, 'max timesteps of encoder (max source text tokens)')  # for generator
 # tf.app.flags.DEFINE_integer('max_dec_steps', 200, 'max timesteps of decoder (max summary tokens)') # for generator
@@ -202,7 +202,6 @@ def output_to_batch(current_batch, result, batcher, dis_batcher):
         encode_words = current_batch.original_review_inputs[i]
 
         for j in range(FLAGS.max_dec_sen_num):
-
             output_ids = [int(t) for t in result['generated'][i][j]][1:]
             decoded_words = data.outputids2words(output_ids, batcher._vocab, None)
             # Remove the [STOP] token from decoded_words, if necessary
@@ -272,9 +271,7 @@ def run_train_generator(model, discirminator_model, discriminator_sess, batcher,
 
         for i in range(1):
             results = model.run_eval_given_step(sess, current_batch)
-
             new_batch, new_dis_batch = output_to_batch(current_batch, results, batcher, dis_batcher)
-
             reward = discirminator_model.run_ypred_auc(discriminator_sess, new_dis_batch)
             reward_sentence_level = reward['y_pred_auc_sentence']
             for i in range(len(reward['y_pred_auc'])):
@@ -298,8 +295,7 @@ def run_train_generator(model, discirminator_model, discriminator_sess, batcher,
             loss = results['loss']
             loss_window += loss
 
-            if not np.isfinite(loss):
-                raise Exception("Loss is not finite. Stopping.")
+            if not np.isfinite(loss): raise Exception("Loss is not finite. Stopping.")
 
         new_dis_batch = batch_to_batch(current_batch, batcher, dis_batcher)
         # print_batch(new_batch)
@@ -319,12 +315,10 @@ def run_train_generator(model, discirminator_model, discriminator_sess, batcher,
         reward['y_pred_auc'] = np.reshape(np.array(reward['y_pred_auc']),
                                           [FLAGS.batch_size * batcher._hps.max_dec_sen_num, batcher._hps.max_dec_steps])
         # results = model.run_train_step(sess, current_batch, reward['y_pred_auc'])
-        new_results = model.run_train_step(sess, current_batch,
-                                           reward['y_pred_auc'])
+        new_results = model.run_train_step(sess, current_batch, reward['y_pred_auc'])
         new_loss = new_results['loss']
         new_loss_window += new_loss
-        if not np.isfinite(new_loss):
-            raise Exception("new Loss is not finite. Stopping.")
+        if not np.isfinite(new_loss): raise Exception("new Loss is not finite. Stopping.")
         train_step = new_results['global_step']  # we need this to update our running average loss
 
         '''if train_step % 10000 == 0:
@@ -335,7 +329,6 @@ def run_train_generator(model, discirminator_model, discriminator_sess, batcher,
     t1 = time.time()
     tf.logging.info('seconds for %d training generator step: %.3f ', train_step, (t1 - t0) / len(batches))
     tf.logging.info('loss: %f', loss_window / (len(batches) / len(batches)))  # print the loss to screen
-
     tf.logging.info('teach forcing loss: %f', new_loss_window / len(batches))  # print the loss to screen
 
 
@@ -518,20 +511,14 @@ def main(unused_argv):
         sess_dis, saver_dis, train_dir_dis = setup_training_discriminator(model_dis)
 
         util.load_ckpt(saver_dis, sess_dis, ckpt_dir="train-discriminator")
-
         util.load_ckpt(saver_ge, sess_ge, ckpt_dir="train-generator")
-
         if not os.path.exists("MLE"): os.mkdir("MLE")
 
         print("evaluate the diversity of MLE (decode based on sampling)")
-        generated.generator_test_sample_example("MLE/" + "MLE_sample_positive",
-                                                "MLE/" + "MLE_sample_negative",
-                                                200)
+        generated.generator_test_sample_example("MLE/" + "MLE_sample_positive", "MLE/" + "MLE_sample_negative", 200)
 
         print("evaluate the diversity of MLE (decode based on max probability)")
-        generated.generator_test_max_example("MLE/" + "MLE_max_temp_positive",
-                                             "MLE/" + "MLE_max_temp_negative",
-                                             200)
+        generated.generator_test_max_example("MLE/" + "MLE_max_temp_positive", "MLE/" + "MLE_max_temp_negative", 200)
 
         print("Start adversarial  training......")
         if not os.path.exists("train_sample_generated"): os.mkdir("train_sample_generated")
