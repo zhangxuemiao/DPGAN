@@ -43,52 +43,53 @@ import re
 import nltk
 from tensorflow.python import debug as tf_debug
 
-FLAGS = tf.app.flags.FLAGS
+FLAGS = tf.flags.FLAGS
 
 # Where to find data
-tf.app.flags.DEFINE_string('data_path', 'review_generation_dataset/train/* ',
-                           'Path expression to tf.Example datafiles. Can include wildcards to access multiple datafiles.')
-tf.app.flags.DEFINE_string('vocab_path', 'review_generation_dataset/vocab.txt',
-                           'Path expression to text vocabulary file.')
+tf.flags.DEFINE_string('data_path', 'review_generation_dataset/train/* ',
+                       'Path expression to tf.Example datafiles. Can include wildcards to access multiple datafiles.')
+tf.flags.DEFINE_string('vocab_path', 'review_generation_dataset/vocab.txt',
+                       'Path expression to text vocabulary file.')
 
 # Important settings
-tf.app.flags.DEFINE_string('mode', 'train', 'must be one of adversarial_train/train_generator/train_discriminator')
+tf.flags.DEFINE_string('mode', 'train_generator',
+                       'must be one of adversarial_train/train_generator/train_discriminator')
 
 # Where to save output
-tf.app.flags.DEFINE_string('log_root', '', 'Root directory for all logging.')
-tf.app.flags.DEFINE_string('exp_name', 'myexperiment',
-                           'Name for experiment. Logs will be saved in a directory with this name, under log_root.')
+tf.flags.DEFINE_string('log_root', '', 'Root directory for all logging.')
+tf.flags.DEFINE_string('exp_name', 'myexperiment',
+                       'Name for experiment. Logs will be saved in a directory with this name, under log_root.')
 
-tf.app.flags.DEFINE_integer('gpuid', 0, 'for gradient clipping')
-tf.app.flags.DEFINE_string('dataset', 'yelp', "dataset which you use")
-tf.app.flags.DEFINE_string('run_method', 'auto-encoder', 'must be one of auto-encoder/language_model')
+tf.flags.DEFINE_integer('gpuid', 0, 'for gradient clipping')
+tf.flags.DEFINE_string('dataset', 'yelp', "dataset which you use")
+tf.flags.DEFINE_string('run_method', 'auto-encoder', 'must be one of auto-encoder/language_model')
 
-tf.app.flags.DEFINE_integer('max_enc_sen_num', 6,
-                            'max timesteps of encoder (max source text tokens)')  # for discriminator
-tf.app.flags.DEFINE_integer('max_enc_seq_len', 40,
-                            'max timesteps of encoder (max source text tokens)')  # for discriminator
+tf.flags.DEFINE_integer('max_enc_sen_num', 6,
+                        'max timesteps of encoder (max source text tokens)')  # for discriminator
+tf.flags.DEFINE_integer('max_enc_seq_len', 20,
+                        'max timesteps of encoder (max source text tokens)')  # for discriminator
 
-tf.app.flags.DEFINE_integer('max_dec_sen_num', 6, 'max timesteps of decoder (max source text tokens)')  # for generator
-tf.app.flags.DEFINE_integer('max_dec_steps', 40, 'max timesteps of decoder (max source text tokens)')  # for generator
+tf.flags.DEFINE_integer('max_dec_sen_num', 6, 'max timesteps of decoder (max source text tokens)')  # for generator
+tf.flags.DEFINE_integer('max_dec_steps', 20, 'max timesteps of decoder (max source text tokens)')  # for generator
 
 # Hyperparameters
-tf.app.flags.DEFINE_integer('hidden_dim', 16, 'dimension of RNN hidden states')  # for discriminator and generator
-tf.app.flags.DEFINE_integer('emb_dim', 8, 'dimension of word embeddings')  # for discriminator and generator
-tf.app.flags.DEFINE_integer('batch_size', 8, 'minibatch size')  # for discriminator and generator
-tf.app.flags.DEFINE_integer('max_enc_steps', 50, 'max timesteps of encoder (max source text tokens)')  # for generator
-# tf.app.flags.DEFINE_integer('max_dec_steps', 200, 'max timesteps of decoder (max summary tokens)') # for generator
-tf.app.flags.DEFINE_integer('min_dec_steps', 35,
-                            'Minimum sequence length of generated summary. Applies only for beam search decoding mode')  # for generator
-tf.app.flags.DEFINE_integer('vocab_size', 5000,
-                            'Size of vocabulary. These will be read from the vocabulary file in order. If the vocabulary file contains fewer words than this number, or if this number is set to 0, will take all words in the vocabulary file.')
-tf.app.flags.DEFINE_float('lr', 0.6, 'learning rate')  # for discriminator and generator
-tf.app.flags.DEFINE_float('adagrad_init_acc', 0.1,
-                          'initial accumulator value for Adagrad')  # for discriminator and generator
-tf.app.flags.DEFINE_float('rand_unif_init_mag', 0.02,
-                          'magnitude for lstm cells random uniform inititalization')  # for discriminator and generator
-tf.app.flags.DEFINE_float('trunc_norm_init_std', 1e-4,
-                          'std of trunc norm init, used for initializing everything else')  # for discriminator and generator
-tf.app.flags.DEFINE_float('max_grad_norm', 2.0, 'for gradient clipping')  # for discriminator and generator
+tf.flags.DEFINE_integer('hidden_dim', 8, 'dimension of RNN hidden states')  # for discriminator and generator
+tf.flags.DEFINE_integer('emb_dim', 8, 'dimension of word embeddings')  # for discriminator and generator
+tf.flags.DEFINE_integer('batch_size', 8, 'minibatch size')  # for discriminator and generator
+tf.flags.DEFINE_integer('max_enc_steps', 20, 'max timesteps of encoder (max source text tokens)')  # for generator
+# tf.flags.DEFINE_integer('max_dec_steps', 200, 'max timesteps of decoder (max summary tokens)') # for generator
+tf.flags.DEFINE_integer('min_dec_steps', 10,
+                        'Minimum sequence length of generated summary. Applies only for beam search decoding mode')  # for generator
+tf.flags.DEFINE_integer('vocab_size', 2000,
+                        'Size of vocabulary. These will be read from the vocabulary file in order. If the vocabulary file contains fewer words than this number, or if this number is set to 0, will take all words in the vocabulary file.')
+tf.flags.DEFINE_float('lr', 0.6, 'learning rate')  # for discriminator and generator
+tf.flags.DEFINE_float('adagrad_init_acc', 0.1,
+                      'initial accumulator value for Adagrad')  # for discriminator and generator
+tf.flags.DEFINE_float('rand_unif_init_mag', 0.02,
+                      'magnitude for lstm cells random uniform inititalization')  # for discriminator and generator
+tf.flags.DEFINE_float('trunc_norm_init_std', 1e-4,
+                      'std of trunc norm init, used for initializing everything else')  # for discriminator and generator
+tf.flags.DEFINE_float('max_grad_norm', 2.0, 'for gradient clipping')  # for discriminator and generator
 
 '''the generator model is saved at FLAGS.log_root + "train-generator"
    give up sv, use sess
@@ -157,7 +158,7 @@ def run_pre_train_generator(model, batcher, max_run_epoch, sess, saver, train_di
         loss_window = 0.0
         while step < len(batches):
             current_batch = batches[step]
-            print(f'current_batch -> {current_batch}')
+            # print(f'current_batch -> {current_batch}')
 
             step += 1
             results = model.run_pre_train_step(sess, current_batch)
@@ -423,9 +424,7 @@ def run_train_discriminator(model, max_epoch, batcher, batches, sess, saver, tra
     epoch = 0
     while epoch < max_epoch:
         epoch += 1
-
         while step < len(batches):
-
             current_batch = batches[step]
             step += 1
             results = model.run_pre_train_step(sess, current_batch)
@@ -433,8 +432,7 @@ def run_train_discriminator(model, max_epoch, batcher, batches, sess, saver, tra
             loss = results['loss']
             loss_window += loss
 
-            if not np.isfinite(loss):
-                raise Exception("Loss is not finite. Stopping.")
+            if not np.isfinite(loss): raise Exception("Loss is not finite. Stopping.")
 
             train_step = results['global_step']  # we need this to update our running average loss
             if train_step % 100 == 0:
@@ -489,6 +487,12 @@ def main(unused_argv):
         if key in hparam_list:  # if it's in the list
             hps_dict[key] = val  # add it to the dict
     hps_discriminator = namedtuple("HParams", hps_dict.keys())(**hps_dict)
+
+    # # test
+    # model_dis = Discriminator(hps_discriminator, vocab)
+    # model_dis.build_graph()
+    # sys.exit(0)
+    # # test
 
     print('before load batcher...')
     # Create a batcher object that will create minibatches of data
@@ -547,8 +551,7 @@ def main(unused_argv):
                 print("evaluate the diversity of DP-GAN (decode based on sampling)")
                 generated.generator_test_max_example(
                     "test_max_generated/" + str(epoch) + "epoch_step" + str(step) + "_temp_positive",
-                    "test_max_generated/" + str(epoch) + "epoch_step" + str(step) + "_temp_negative",
-                    200)
+                    "test_max_generated/" + str(epoch) + "epoch_step" + str(step) + "_temp_negative", 200)
 
                 dis_batcher.train_queue = []
                 dis_batcher.train_queue = []
@@ -571,8 +574,8 @@ def main(unused_argv):
         sess_ge, saver_ge, train_dir_ge = setup_training_generator(model)
         generated = Generated_sample(model, vocab, batcher, sess_ge)
         print("Start pre-training generator......")
-        run_pre_train_generator(model, batcher, 10, sess_ge, saver_ge, train_dir_ge,
-                                generated)  # this is an infinite loop until
+        # this is an infinite loop until
+        run_pre_train_generator(model, batcher, 10, sess_ge, saver_ge, train_dir_ge, generated)
 
         print("Generating negative examples......")
         generated.generator_train_negative_example()

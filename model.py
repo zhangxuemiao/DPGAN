@@ -22,7 +22,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
 
-FLAGS = tf.app.flags.FLAGS
+FLAGS = tf.flags.FLAGS
 
 
 def sample_output(embedding, embedding_dec, output_projection=None,
@@ -94,7 +94,8 @@ class Generator(object):
                                             name='target_batch')
         self._dec_padding_mask = tf.placeholder(tf.float32, [hps.batch_size * hps.max_dec_sen_num, hps.max_dec_steps],
                                                 name='dec_padding_mask')
-        self.reward = tf.placeholder(tf.float32, [hps.batch_size * hps.max_dec_sen_num, hps.max_dec_steps], name='reward')
+        self.reward = tf.placeholder(tf.float32, [hps.batch_size * hps.max_dec_sen_num, hps.max_dec_steps],
+                                     name='reward')
         self.dec_lens = tf.placeholder(tf.int32, [hps.batch_size], name='dec_lens')
 
     def _make_feed_dict(self, batch, just_enc=False):

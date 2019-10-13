@@ -23,7 +23,7 @@ import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
 import data
 
-FLAGS = tf.app.flags.FLAGS
+FLAGS = tf.flags.FLAGS
 
 
 class Discriminator(object):
@@ -46,8 +46,7 @@ class Discriminator(object):
                                          name='enc_batch')
         self._dec_lens = tf.placeholder(tf.int32, [hps.batch_size * hps.max_enc_sen_num], name='enc_lens')
         # self._enc_sen_lens = tf.placeholder(tf.int32, [hps.batch_size * hps.], name='enc_sen_lens')
-        self._target_mask = tf.placeholder(tf.float32,
-                                           [hps.batch_size * hps.max_enc_sen_num, hps.max_enc_seq_len],
+        self._target_mask = tf.placeholder(tf.float32, [hps.batch_size * hps.max_enc_sen_num, hps.max_enc_seq_len],
                                            name='target_mask')
         # self._enc_padding_mask = tf.placeholder(tf.float32, [hps.batch_size, None], name='enc_padding_mask')
         self._decay = tf.placeholder(tf.float32, name="decay_learning_rate")
@@ -71,23 +70,22 @@ class Discriminator(object):
         return feed_dict
 
     def _build_model(self):
-        """Add the whole sequence-to-sequence model to the graph."""
+        # """Add the whole sequence-to-sequence model to the graph."""
         hps = self._hps
         vsize = self._vocab.size()  # size of the vocabulary
 
         with tf.variable_scope('discriminator'):
             # Some initializers
-            self.rand_unif_init = tf.random_uniform_initializer(-hps.rand_unif_init_mag, hps.rand_unif_init_mag,
-                                                                seed=123)
+            self.rand_unif_init = tf.random_uniform_initializer(
+                -hps.rand_unif_init_mag, hps.rand_unif_init_mag, seed=123)
             self.trunc_norm_init = tf.truncated_normal_initializer(stddev=hps.trunc_norm_init_std)
 
             # Add embedding matrix (shared by the encoder and decoder inputs)
             with tf.variable_scope('embedding'):
                 embedding = tf.get_variable('embedding', [vsize, hps.emb_dim], dtype=tf.float32,
                                             initializer=self.trunc_norm_init)
-
-                emb_dec_inputs = tf.nn.embedding_lookup(embedding,
-                                                        self._dec_batch)  # tensor with shape (batch_size, max_enc_steps, emb_size)
+                # tensor with shape (batch_size, max_enc_steps, emb_size)
+                emb_dec_inputs = tf.nn.embedding_lookup(embedding, self._dec_batch)
                 self.emb_enc_inputs = emb_dec_inputs
 
             ## Add the encoder.
@@ -105,28 +103,25 @@ class Discriminator(object):
 
                 cell = tf.contrib.rnn.LSTMCell(
                     hps.hidden_dim,
-                    initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=113),
-                    state_is_tuple=False)
-
-                # tf.logging.info(emb_dec_inputs)
+                    initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=113), state_is_tuple=False)
+                print(f'emb_dec_inputs -> {emb_dec_inputs}')
                 emb_dec_inputs = tf.unstack(emb_dec_inputs, axis=1)
+                print(f'emb_dec_inputs -> {emb_dec_inputs}')
                 self._dec_in_state = cell.zero_state(FLAGS.batch_size * hps.max_enc_sen_num, tf.float32)
-                # tf.logging.info(self._dec_in_state)
-                # tf.logging.info(emb_dec_inputs)
                 decoder_outputs, self._dec_out_state = tf.contrib.legacy_seq2seq.rnn_decoder(
                     emb_dec_inputs, self._dec_in_state,
                     cell, loop_function=None
                 )
                 decoder_outputs = tf.transpose(decoder_outputs, [1, 0, 2])
-
-            decoder_outputs = tf.reshape(decoder_outputs,
-                                         [-1,
-                                          hps.hidden_dim])
+            print(f'decoder_outputs -> {decoder_outputs}')
+            decoder_outputs = tf.reshape(decoder_outputs, [-1, hps.hidden_dim])
+            print(f'decoder_outputs -> {decoder_outputs}')
             decoder_outputs = tf.nn.xw_plus_b(decoder_outputs, w, v)
+            print(f'decoder_outputs -> {decoder_outputs}')
 
             decoder_outputs = tf.reshape(decoder_outputs,
-                                         [hps.batch_size * hps.max_enc_sen_num, hps.max_enc_seq_len,
-                                          FLAGS.vocab_size])
+                                         [hps.batch_size * hps.max_enc_sen_num, hps.max_enc_seq_len, FLAGS.vocab_size])
+            print(f'decoder_outputs -> {decoder_outputs}')
 
             '''crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(
                     labels=self._target_batch, logits=decoder_outputs)
@@ -143,15 +138,13 @@ class Discriminator(object):
             weights = self._target_mask * self.label
             self.train_loss = tf.contrib.seq2seq.sequence_loss(
                 decoder_outputs,
-                self._target_batch,
-                weights,
+                self._target_batch, weights,
                 average_across_timesteps=True,
                 average_across_batch=True)
 
             self.out_loss = tf.contrib.seq2seq.sequence_loss(
                 decoder_outputs,
-                self._target_batch,
-                self._target_mask,
+                self._target_batch, self._target_mask,
                 average_across_timesteps=False,
                 average_across_batch=False)
             self.out_loss = tf.reshape(self.out_loss, [-1])
@@ -258,3 +251,8 @@ class Discriminator(object):
         print (error_label)
         print (error_list)
         return right, number,error_list,error_label'''
+
+
+if __name__ == '__main__':
+    disc = Discriminator()
+    disc.build_graph()
